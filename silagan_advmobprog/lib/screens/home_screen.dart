@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../screens/cart_screen.dart';
 import '../screens/product_screen.dart';
 import '../widgets/custom_text.dart';
 
@@ -16,6 +17,15 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
 
+  // Using dummy user ID 1 for demonstration
+  final int _currentUserId = 15;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -28,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ? Image.asset('assets/images/nubdexchange_logo.png', scale: 11.sp)
               : CustomText(
                   text: (_selectedIndex == 1)
-                      ? 'Chat'
+                      ? 'Cart'
                       : (_selectedIndex == 2)
                       ? 'Profile'
                       : 'Home',
@@ -45,20 +55,37 @@ class _HomeScreenState extends State<HomeScreen> {
         body: PageView(
           physics: const NeverScrollableScrollPhysics(),
           controller: _pageController,
-          children: const <Widget>[ProductScreen()],
+          children: <Widget>[
+            const ProductScreen(),
+            CartScreen(userId: _currentUserId),
+            const Center(child: Text('Profile Screen')),
+          ],
           onPageChanged: (page) {
             setState(() {
               _selectedIndex = page;
             });
           },
         ),
+        floatingActionButton: _selectedIndex == 1
+            ? null // Hide when in the cart_screen
+            : FloatingActionButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('Chat opened')));
+                },
+                child: const Icon(Icons.chat),
+              ),
         bottomNavigationBar: BottomNavigationBar(
-          showSelectedLabels: false, //selected item
-          showUnselectedLabels: false, //unselected item
+          showSelectedLabels: false,
+          showUnselectedLabels: false,
           onTap: _onTappedBar,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.shop_2), label: 'Shop'),
-            BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_cart),
+              label: 'Cart',
+            ),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],
           currentIndex: _selectedIndex,
@@ -71,6 +98,10 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _selectedIndex = value;
     });
-    _pageController.jumpToPage(value);
+    _pageController.animateToPage(
+      value,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
   }
 }

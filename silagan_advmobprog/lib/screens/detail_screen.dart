@@ -2,12 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../models/product.dart';
+import '../services/cart_service.dart';
 import '../widgets/custom_text.dart';
 
 class DetailScreen extends StatelessWidget {
   final Product product;
 
+  // Using dummy user ID 1 for demonstration
+  final int _currentUserId = 1;
+
   const DetailScreen({super.key, required this.product});
+
+  // Helper method to add item to cart
+  void _addToCart(BuildContext context) async {
+    try {
+      // Show loading snackbar or indicator if preferred
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Adding to cart...')));
+
+      final success = await CartService().addToCart(
+        _currentUserId,
+        product.id,
+        1,
+      );
+
+      if (success && context.mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Added to cart successfully!')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to add to cart: $e')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -194,7 +228,7 @@ class DetailScreen extends StatelessWidget {
                       ),
                     SizedBox(height: 20.h),
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () => _addToCart(context),
                       style: ElevatedButton.styleFrom(
                         minimumSize: Size(double.infinity, 52.h),
                         shape: RoundedRectangleBorder(
