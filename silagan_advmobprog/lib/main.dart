@@ -5,7 +5,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:silagan_advmobprog/providers/theme_provider.dart';
 import 'package:silagan_advmobprog/screens/home_screen.dart';
+import 'package:silagan_advmobprog/screens/profile_screen.dart';
 import 'package:silagan_advmobprog/screens/settings_screen.dart';
+import 'package:silagan_advmobprog/screens/signin_screen.dart';
+import 'package:silagan_advmobprog/screens/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,8 +39,11 @@ class SilaganAdvMobProg extends StatelessWidget {
             theme: ThemeData.light(useMaterial3: true),
             darkTheme: ThemeData.dark(useMaterial3: true),
             themeMode: themeProvider.themeMode,
-            initialRoute: '/home',
+            initialRoute: '/',
             routes: <String, WidgetBuilder>{
+              '/': (context) => const SplashScreen(),
+              '/signin': (context) => const LoginScreen(),
+              '/profile': (context) => const ProfileScreen(),
               '/home': (context) => const HomeScreen(),
               '/settings': (context) => const SettingsScreen(),
             },

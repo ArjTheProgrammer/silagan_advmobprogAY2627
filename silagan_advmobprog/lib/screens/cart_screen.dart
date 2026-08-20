@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
 
 import '../models/cart.dart';
 import '../models/product.dart';
@@ -7,6 +8,8 @@ import '../services/cart_service.dart';
 import '../services/product_service.dart';
 import '../widgets/custom_text.dart';
 import 'detail_screen.dart';
+// Adjust import path to where your ThemeProvider is located
+import '../providers/theme_provider.dart';
 
 class CartScreen extends StatefulWidget {
   final int userId;
@@ -57,10 +60,8 @@ class _CartScreenState extends State<CartScreen> {
       final newQuantity = item.quantity + delta;
 
       if (newQuantity <= 0) {
-        // Remove item if quantity drops to 0
         _cartItems.removeAt(index);
       } else {
-        // Create an updated CartProduct to replace the old one
         final newTotal = item.price * newQuantity;
         final newDiscountedTotal =
             newTotal - (newTotal * (item.discountPercentage / 100));
@@ -80,7 +81,6 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _confirmOrder() {
-    // Show success message
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Order confirmed successfully!'),
@@ -121,7 +121,6 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  // --- Summary Calculations ---
   double get _subtotal => _cartItems.fold(0, (sum, item) => sum + item.total);
   double get _tax => _subtotal * _taxRate;
   double get _total =>
@@ -129,6 +128,9 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -161,6 +163,7 @@ class _CartScreenState extends State<CartScreen> {
                 borderRadius: BorderRadius.circular(12.r),
                 child: Card(
                   elevation: 2,
+                  color: isDarkMode ? Colors.grey[900] : Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12.r),
                   ),
@@ -204,6 +207,7 @@ class _CartScreenState extends State<CartScreen> {
                                 children: [
                                   _buildQtyButton(
                                     icon: Icons.remove,
+                                    isDarkMode: isDarkMode,
                                     onTap: () => _updateQuantity(index, -1),
                                   ),
                                   SizedBox(width: 12.w),
@@ -215,6 +219,7 @@ class _CartScreenState extends State<CartScreen> {
                                   SizedBox(width: 12.w),
                                   _buildQtyButton(
                                     icon: Icons.add,
+                                    isDarkMode: isDarkMode,
                                     onTap: () => _updateQuantity(index, 1),
                                   ),
                                 ],
@@ -240,10 +245,10 @@ class _CartScreenState extends State<CartScreen> {
         Container(
           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDarkMode ? Colors.grey[900] : Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, -5),
               ),
@@ -260,7 +265,7 @@ class _CartScreenState extends State<CartScreen> {
               _buildSummaryRow('Tax (5%)', _tax),
               Padding(
                 padding: EdgeInsets.symmetric(vertical: 12.h),
-                child: const Divider(),
+                child: Divider(color: isDarkMode ? Colors.grey[700] : null),
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -274,6 +279,9 @@ class _CartScreenState extends State<CartScreen> {
                     text: '\$${_total.toStringAsFixed(2)}',
                     fontSize: 20.sp,
                     fontWeight: FontWeight.bold,
+                    // color: const Color(
+                    //   0xFFEE4D2D,
+                    // ), // Maintain Shopee orange for total
                   ),
                 ],
               ),
@@ -281,6 +289,8 @@ class _CartScreenState extends State<CartScreen> {
               ElevatedButton(
                 onPressed: _confirmOrder,
                 style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFEE4D2D),
+                  foregroundColor: Colors.white,
                   minimumSize: Size(double.infinity, 52.h),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16.r),
@@ -315,17 +325,22 @@ class _CartScreenState extends State<CartScreen> {
 
   Widget _buildQtyButton({
     required IconData icon,
+    required bool isDarkMode,
     required VoidCallback onTap,
   }) {
     return Material(
-      color: Colors.grey[200],
+      color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8.r),
         child: Padding(
           padding: EdgeInsets.all(4.r),
-          child: Icon(icon, size: 20.sp),
+          child: Icon(
+            icon,
+            size: 20.sp,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
         ),
       ),
     );
