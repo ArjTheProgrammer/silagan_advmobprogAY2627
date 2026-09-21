@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
 import '../models/user.dart';
 import '../services/user_service.dart';
-// Adjust import path
 import '../providers/theme_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -29,9 +29,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadFullUserProfile() async {
+    setState(() => _isLoading = true);
     try {
       final localUser = await _userService.getUser();
-      if (localUser.id != 0) {
+      // Only fetch from DummyJSON if it's a DummyJSON user (id != 0)
+      if (localUser.id != 0 && localUser.id != 1) {
         final fullUser = await _userService.fetchFullUserProfile(localUser.id);
         if (!mounted) return;
         setState(() {
@@ -55,16 +57,153 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _handleLogout() async {
-    await _userService.logout();
-    if (!mounted) return;
-    Navigator.pushNamedAndRemoveUntil(context, '/signin', (route) => false);
+  // --- Account Management Actions ---
+
+  void _updateUsername() {
+    final controller = TextEditingController(text: _user?.username);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Update Username'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: 'New Username'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              if (controller.text.trim().isNotEmpty) {
+                try {
+                  await _userService.updateUsername(controller.text.trim());
+                  _loadFullUserProfile(); // Refresh UI
+                  if (mounted)
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Username updated!')),
+                    );
+                } catch (e) {
+                  if (mounted)
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _changePassword() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Change Password'),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          decoration: const InputDecoration(hintText: 'New Password'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              if (controller.text.trim().isNotEmpty) {
+                try {
+                  await _userService.resetPasswordFromCurrentPassword(
+                    controller.text.trim(),
+                  );
+                  if (mounted)
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Password changed successfully!'),
+                      ),
+                    );
+                } catch (e) {
+                  // If the user's session is too old, Firebase throws requires-recent-login
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Action failed. You may need to log out and log back in to verify your identity.',
+                        ),
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteAccount() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: const Text(
+          'Are you sure you want to permanently delete your account? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await _userService.deleteAccount();
+                if (mounted)
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    '/signin',
+                    (route) => false,
+                  );
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Deletion failed. Please log out and log back in before deleting.',
+                      ),
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
+
+    // Check Login Type
+    final bool isFirebaseUser =
+        firebase_auth.FirebaseAuth.instance.currentUser != null;
+    final String loginType = isFirebaseUser ? 'Firebase Auth' : 'DummyJSON API';
 
     if (_isLoading) {
       return const Center(
@@ -117,26 +256,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: Colors.white.withOpacity(0.9),
                           ),
                         ),
-                        if (_user?.role.isNotEmpty == true)
-                          Container(
-                            margin: EdgeInsets.only(top: 6.h),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 8.w,
-                              vertical: 2.h,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(4.r),
-                            ),
-                            child: Text(
-                              _user!.role.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 10.sp,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
+                        SizedBox(height: 8.h),
+                        // Login Type Indicator
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8.w,
+                            vertical: 2.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(4.r),
+                          ),
+                          child: Text(
+                            'Account: $loginType',
+                            style: TextStyle(
+                              fontSize: 10.sp,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
+                        ),
                       ],
                     ),
                   ),
@@ -168,11 +307,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               title: 'Personal Information',
               isDarkMode: isDarkMode,
               tiles: [
+                _buildTile(
+                  Icons.alternate_email,
+                  'Username',
+                  _user?.username,
+                  isDarkMode,
+                ),
                 _buildTile(Icons.phone, 'Phone', _user?.phone, isDarkMode),
                 _buildTile(
                   Icons.cake,
-                  'Birth Date',
-                  '${_user?.birthDate} (${_user?.age} yrs)',
+                  'Age',
+                  _user?.age.toString(),
                   isDarkMode,
                 ),
                 _buildTile(
@@ -186,69 +331,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             SizedBox(height: 12.h),
 
-            // Section: Company / Job
-            _buildSection(
-              title: 'Employment Details',
-              isDarkMode: isDarkMode,
-              tiles: [
-                _buildTile(
-                  Icons.business,
-                  'Company',
-                  _user?.company.name,
-                  isDarkMode,
-                ),
-                _buildTile(
-                  Icons.work_outline,
-                  'Job Title',
-                  _user?.company.title,
-                  isDarkMode,
-                ),
-                _buildTile(
-                  Icons.category,
-                  'Department',
-                  _user?.company.department,
-                  isDarkMode,
-                ),
-              ],
-            ),
-
-            SizedBox(height: 12.h),
-
-            // Section: Address
-            _buildSection(
-              title: 'Shipping Address',
-              isDarkMode: isDarkMode,
-              tiles: [
-                _buildTile(
-                  Icons.location_on_outlined,
-                  'Address',
-                  _user?.address.fullAddress,
-                  isDarkMode,
-                ),
-              ],
-            ),
-
-            SizedBox(height: 16.h),
-
-            // Logout Button
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.logout, color: Colors.redAccent),
-                  label: const Text(
-                    'Log Out',
-                    style: TextStyle(color: Colors.redAccent),
+            // Section: Account Management (Only for Firebase Users)
+            if (isFirebaseUser)
+              _buildSection(
+                title: 'Account Management',
+                isDarkMode: isDarkMode,
+                tiles: [
+                  ListTile(
+                    leading: Icon(
+                      Icons.edit,
+                      color: _shopeeOrange,
+                      size: 20.sp,
+                    ),
+                    title: Text(
+                      'Update Username',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _updateUsername,
                   ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.redAccent),
-                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                  ListTile(
+                    leading: Icon(
+                      Icons.lock_outline,
+                      color: _shopeeOrange,
+                      size: 20.sp,
+                    ),
+                    title: Text(
+                      'Change Password',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _changePassword,
                   ),
-                  onPressed: _handleLogout,
-                ),
+                  ListTile(
+                    leading: Icon(
+                      Icons.delete_forever,
+                      color: Colors.redAccent,
+                      size: 20.sp,
+                    ),
+                    title: Text(
+                      'Delete Account',
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onTap: _deleteAccount,
+                  ),
+                ],
               ),
-            ),
+
             SizedBox(height: 24.h),
           ],
         ),
@@ -294,7 +430,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String? value,
     bool isDarkMode,
   ) {
-    if (value == null || value.trim().isEmpty) return const SizedBox.shrink();
+    if (value == null || value.trim().isEmpty || value == '0')
+      return const SizedBox.shrink();
     return ListTile(
       dense: true,
       leading: Icon(iconData, color: _shopeeOrange, size: 20.sp),

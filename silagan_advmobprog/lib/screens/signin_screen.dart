@@ -17,7 +17,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController(); // Changed to Email
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -33,17 +33,16 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await userService.loginUser(
-        _usernameController.text.trim(),
+      // Call the new Firebase signIn method
+      await userService.signIn(
+        _emailController.text.trim(),
         _passwordController.text.trim(),
       );
-
-      await userService.saveUserData(response);
 
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      Navigator.pushReplacementNamed(context, '/home', arguments: response);
+      Navigator.pushReplacementNamed(context, '/home');
     } catch (error) {
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -54,12 +53,9 @@ class _LoginScreenState extends State<LoginScreen> {
         friendlyMessage = 'No internet connection. Please check your network.';
       } else {
         final errorString = error.toString().toLowerCase();
-        if (errorString.contains('invalid credentials') ||
-            errorString.contains('400')) {
-          friendlyMessage = 'Invalid username or password. Please try again.';
-        } else if (errorString.contains('500') ||
-            errorString.contains('server')) {
-          friendlyMessage = 'Server error. Please try again later.';
+        if (errorString.contains('invalid-credential') ||
+            errorString.contains('user-not-found')) {
+          friendlyMessage = 'Invalid email or password. Please try again.';
         }
       }
 
@@ -75,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -116,17 +112,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   SizedBox(height: 32.h),
                   TextFormField(
-                    controller: _usernameController,
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
                     style: TextStyle(color: textColor),
                     decoration: InputDecoration(
-                      labelText: 'Username',
+                      labelText: 'Email', // Changed from Username
                       labelStyle: TextStyle(
                         color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
                       ),
-                      prefixIcon: const Icon(
-                        Icons.person,
-                        color: _shopeeOrange,
-                      ),
+                      prefixIcon: const Icon(Icons.email, color: _shopeeOrange),
                       focusedBorder: const OutlineInputBorder(
                         borderSide: BorderSide(color: _shopeeOrange),
                       ),
@@ -142,7 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Please enter your username'
+                        ? 'Please enter your email'
                         : null,
                   ),
                   SizedBox(height: 16.h),
@@ -208,6 +202,32 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           )
                         : Text('Log In', style: TextStyle(fontSize: 16.sp)),
+                  ),
+
+                  SizedBox(height: 16.h),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Don't have an account?",
+                        style: TextStyle(
+                          color: isDarkMode
+                              ? Colors.grey[400]
+                              : Colors.grey[700],
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.pushNamed(context, '/signup'),
+                        child: const Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            color: _shopeeOrange,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

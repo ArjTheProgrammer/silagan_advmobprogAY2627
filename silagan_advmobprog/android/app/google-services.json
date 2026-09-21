@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "686062925686",
+    "project_id": "nilai-65a08",
+    "storage_bucket": "nilai-65a08.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:686062925686:android:3407604b9065e162f8ec57",
+        "android_client_info": {
+          "package_name": "com.example.silagan_mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "686062925686-900vlldeolj7uibopc3cogc19crj2ojb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWBdZeke4242wrclQaGVW0lrcfgl727CE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "686062925686-900vlldeolj7uibopc3cogc19crj2ojb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

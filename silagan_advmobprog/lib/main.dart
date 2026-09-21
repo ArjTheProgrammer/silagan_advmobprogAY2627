@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -8,7 +9,9 @@ import 'package:silagan_advmobprog/screens/home_screen.dart';
 import 'package:silagan_advmobprog/screens/profile_screen.dart';
 import 'package:silagan_advmobprog/screens/settings_screen.dart';
 import 'package:silagan_advmobprog/screens/signin_screen.dart';
+import 'package:silagan_advmobprog/screens/signup_screen.dart';
 import 'package:silagan_advmobprog/screens/splash_screen.dart';
+import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +19,7 @@ Future<void> main() async {
     DeviceOrientation.portraitUp,
   ]);
   await dotenv.load(fileName: 'assets/.env');
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const SilaganAdvMobProg());
 }
 
@@ -43,6 +47,7 @@ class SilaganAdvMobProg extends StatelessWidget {
             routes: <String, WidgetBuilder>{
               '/': (context) => const SplashScreen(),
               '/signin': (context) => const LoginScreen(),
+              '/signup': (context) => const SignupScreen(),
               '/profile': (context) => const ProfileScreen(),
               '/home': (context) => const HomeScreen(),
               '/settings': (context) => const SettingsScreen(),

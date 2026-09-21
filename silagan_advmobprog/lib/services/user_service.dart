@@ -1,64 +1,91 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../models/user.dart';
 
 class UserService {
   static const String _baseUrl = 'https://dummyjson.com';
+  final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
   Map<String, dynamic> data = {};
 
-  Future<Map<String, dynamic>> loginUser(
-    String username,
+  // ENHANCEMENT 1: FIREBASE AUTH FUNCTIONS
+
+  Future<firebase_auth.UserCredential> signIn(
+    String email,
     String password,
   ) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/auth/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'username': username,
-        'password': password,
-        'expiresInMins': 60,
-      }),
+    final credential = await _auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
     );
 
-    if (response.statusCode == 200) {
-      data = jsonDecode(response.body);
-      await saveUserData(data);
-      return data;
-    } else {
-      throw Exception(response.body);
+    // Save minimal session data locally
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('accessToken', credential.user?.uid ?? '');
+    await prefs.setString('email', credential.user?.email ?? '');
+
+    return credential;
+  }
+
+  Future<firebase_auth.UserCredential> createAccount(
+    String email,
+    String password,
+  ) async {
+    return await _auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+  }
+
+  Future<void> signOut() async {
+    try {
+      await _auth.signOut(); // Clears Firebase session
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear(); // Clears local tokens
+    } catch (e) {
+      throw Exception('Failed to log out: $e');
     }
   }
 
-  Future<void> saveUserData(Map<String, dynamic> userData) async {
+  Future<void> updateUsername(String newName) async {
+    await _auth.currentUser?.updateDisplayName(newName);
+
+    // Sync the new username to local storage
     final prefs = await SharedPreferences.getInstance();
-    final user = User.fromJson(userData);
+    await prefs.setString('username', newName);
+  }
 
-    await prefs.setInt('id', user.id);
-    await prefs.setString('username', user.username);
-    await prefs.setString('email', user.email);
-    await prefs.setString('firstName', user.firstName);
-    await prefs.setString('lastName', user.lastName);
-    await prefs.setString('gender', user.gender);
-    await prefs.setString('image', user.image);
-    await prefs.setString('accessToken', user.accessToken);
-    await prefs.setString('refreshToken', user.refreshToken);
+  Future<void> deleteAccount() async {
+    await _auth.currentUser?.delete();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear(); // Clear session after deletion
+  }
 
-    if (userData.containsKey('token')) {
-      await prefs.setString('token', userData['token'] ?? '');
-    } else if (user.accessToken.isNotEmpty) {
-      await prefs.setString('token', user.accessToken);
-    }
+  Future<void> resetPasswordFromCurrentPassword(String newPassword) async {
+    // Note: Firebase may require the user to re-authenticate if their session is old.
+    await _auth.currentUser?.updatePassword(newPassword);
+  }
+
+  // LEGACY/DUMMYJSON FUNCTIONS (For UI display)
+
+  Future<bool> isLoggedIn() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('accessToken') ?? prefs.getString('token');
+    return _auth.currentUser != null || (token != null && token.isNotEmpty);
   }
 
   Future<Map<String, dynamic>> getUserData() async {
     final prefs = await SharedPreferences.getInstance();
     return {
-      'id': prefs.getInt('id') ?? 0,
-      'username': prefs.getString('username') ?? '',
-      'email': prefs.getString('email') ?? '',
+      'id': prefs.getInt('id') ?? 1, // Defaulting to 1 for dummyjson calls
+      'username':
+          _auth.currentUser?.displayName ?? prefs.getString('username') ?? '',
+      'email': _auth.currentUser?.email ?? prefs.getString('email') ?? '',
       'firstName': prefs.getString('firstName') ?? '',
       'lastName': prefs.getString('lastName') ?? '',
+      'age': prefs.getInt('age') ?? 0,
+      'phone': prefs.getString('phone') ?? '',
       'gender': prefs.getString('gender') ?? '',
       'image': prefs.getString('image') ?? '',
       'accessToken': prefs.getString('accessToken') ?? '',
@@ -72,7 +99,6 @@ class UserService {
     return User.fromJson(userData);
   }
 
-  /// Fetches full profile details from the DummyJSON API
   Future<User> fetchFullUserProfile(int userId) async {
     final response = await http.get(Uri.parse('$_baseUrl/users/$userId'));
     if (response.statusCode == 200) {
@@ -83,18 +109,18 @@ class UserService {
     }
   }
 
-  Future<bool> isLoggedIn() async {
+  Future<void> saveNewUserData({
+    required String fName,
+    required String lName,
+    required int age,
+    required String contactNo,
+    required String username,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('accessToken') ?? prefs.getString('token');
-    return token != null && token.isNotEmpty;
-  }
-
-  Future<void> logout() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-    } catch (e) {
-      throw Exception('Failed to log out: $e');
-    }
+    await prefs.setString('firstName', fName);
+    await prefs.setString('lastName', lName);
+    await prefs.setInt('age', age);
+    await prefs.setString('phone', contactNo);
+    await prefs.setString('username', username);
   }
 }
