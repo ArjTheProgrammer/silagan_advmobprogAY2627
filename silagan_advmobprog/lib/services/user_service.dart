@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user.dart';
 
 class UserService {
@@ -32,10 +33,26 @@ class UserService {
     String email,
     String password,
   ) async {
-    return await _auth.createUserWithEmailAndPassword(
+    // 1. Create the user in Firebase Auth
+    final credential = await _auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
+
+    // 2. Save the user's data to the Firestore "Users" collection
+    if (credential.user != null) {
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(credential.user!.uid)
+          .set({
+            'uid': credential.user!.uid,
+            'email': email,
+            // Optional: Create a default first name from the email prefix
+            'firstName': email.split('@')[0],
+          });
+    }
+
+    return credential;
   }
 
   Future<void> signOut() async {

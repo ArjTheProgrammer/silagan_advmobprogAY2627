@@ -5,6 +5,7 @@ import '../screens/cart_screen.dart';
 import '../screens/product_screen.dart';
 import '../screens/profile_screen.dart';
 import '../services/user_service.dart';
+import '../screens/chat_screen.dart';
 import '../widgets/custom_text.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -97,9 +98,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 backgroundColor: _shopeeOrange,
                 foregroundColor: Colors.white,
                 onPressed: () {
-                  ScaffoldMessenger.of(
+                  Navigator.push(
                     context,
-                  ).showSnackBar(const SnackBar(content: Text('Chat opened')));
+                    MaterialPageRoute(builder: (context) => const ChatScreen()),
+                  );
                 },
                 child: const Icon(Icons.chat),
               ),
